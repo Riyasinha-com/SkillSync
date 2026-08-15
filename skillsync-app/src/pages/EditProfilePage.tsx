@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { MapPin, Clock, User } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
@@ -13,15 +13,43 @@ import { SocialLinksSection } from '@/components/edit-profile/SocialLinksSection
 import { PortfolioLinksInput } from '@/components/edit-profile/PortfolioLinksInput'
 import { INITIAL_EDIT_PROFILE, type EditProfileFormData } from '@/data/editProfileMock'
 import { TIMEZONES } from '@/data/exploreMock'
+import api from '@/api/api'
 
-function mockSave(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 1100))
-}
+// Backend (GET/PUT /api/profile) only persists these fields today.
+// "location" in this form maps to the backend's "city" field.
 
 export default function EditProfilePage() {
   const navigate = useNavigate()
   const [form, setForm] = useState<EditProfileFormData>(INITIAL_EDIT_PROFILE)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    async function loadProfile() {
+      try {
+        const res = await api.get('/profile')
+        if (!active) return
+        const data = res.data
+        setForm((f) => ({
+          ...f,
+          name: data.name ?? f.name,
+          bio: data.bio ?? f.bio,
+          timezone: data.timezone || f.timezone,
+          location: data.city ?? f.location,
+        }))
+      } catch {
+        if (active) setError('Could not load your profile. Showing defaults.')
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+    loadProfile()
+    return () => {
+      active = false
+    }
+  }, [])
 
   function setField<K extends keyof EditProfileFormData>(key: K, value: EditProfileFormData[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -29,9 +57,20 @@ export default function EditProfilePage() {
 
   async function handleSave() {
     setStatus('saving')
-    await mockSave()
-    setStatus('saved')
-    setTimeout(() => navigate('/profile'), 900)
+    setError(null)
+    try {
+      await api.put('/profile', {
+        name: form.name,
+        bio: form.bio,
+        timezone: form.timezone,
+        city: form.location,
+      })
+      setStatus('saved')
+      setTimeout(() => navigate('/profile'), 900)
+    } catch {
+      setStatus('idle')
+      setError('Could not save your profile. Please try again.')
+    }
   }
 
   const saving = status === 'saving'
@@ -44,6 +83,8 @@ export default function EditProfilePage() {
         <p className="text-on-surface-variant">Update your details, skills and links.</p>
       </div>
 
+      {loading && <Alert variant="info">Loading your profile&hellip;</Alert>}
+      {error && <Alert variant="error">{error}</Alert>}
       {saved && (
         <Alert variant="success">Profile saved. Taking you back to your profile&hellip;</Alert>
       )}
@@ -57,11 +98,6 @@ export default function EditProfilePage() {
             icon={<User className="w-4 h-4" />}
             value={form.name}
             onChange={(e) => setField('name', e.target.value)}
-          />
-          <Input
-            label="Username"
-            value={form.username}
-            onChange={(e) => setField('username', e.target.value)}
           />
           <Input
             label="Location"
