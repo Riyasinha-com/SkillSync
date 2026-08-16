@@ -1,3 +1,14 @@
+## About This For
+My copy of SkillSync, a peer-to-peer skill-swapping platform I built 
+as part of a 2-person team during my Full-Stack Web Development internship 
+at IIT Jammu (June–July 2026).
+
+My role: Full-Stack Development — built JWT authentication, admin role 
+verification, and connected core features to backend REST APIs.
+
+Original repo: github.com/samadritakarmakar-code/SkillSync
+Live demo: skill-sync-tau-five.vercel.app
+
 \# SkillSync – Peer-to-Peer Skill Swapping Platform
 
 
